@@ -5,7 +5,8 @@ Python engine trains real models; exported ONNX models run in the browser. There
 no mock training.
 
 This file is the shared instruction set for external coding agents (Codex, Claude Code, Freebuff, …). `CLAUDE.md`
-points Claude Code here. Read it before changing code.
+points Claude Code here. Read it before changing code. For a shorter onboarding map, start with
+[docs/agents.md](docs/agents.md); the contract below is binding.
 
 ## Product contract
 
@@ -50,6 +51,7 @@ The engine only binds to loopback. Its data lives in `~/.visionllm` (`VISIONLLM_
 
 | Path | Responsibility |
 | --- | --- |
+| `docs/` | Setup, architecture and the short agent guide |
 | `src/lib/store.tsx` | IndexedDB project/image/run state, imports, dataset upload |
 | `src/lib/engine.ts` | Typed client for the loopback engine |
 | `src/lib/letterbox.ts` | Browser-side letterbox geometry (must match Python) |
@@ -142,5 +144,12 @@ path end to end with real images. UI changes should also be inspected at 1440, 1
 - Do not use Ultralytics YOLO (AGPL-3.0). VLYOLO is original, Apache-2.0 code.
 - Do not commit `node_modules`, `dist`, `engine/.venv`, caches, `.DS_Store`, screenshots or secrets; `.gitignore`
   already covers them.
-- Update this file and `README.md` when commands, the API or the UX contract changes.
+- Update this file, `README.md` and the relevant `docs/` page when commands, the API or the UX contract changes.
 - Keep changes focused. Do not replace working training, annotation, dataset or export paths with mockups.
+
+## Website
+
+The standalone showcase lives on the `website` branch under `website/`. It is plain
+HTML, CSS and JavaScript with no build step and is not part of the Vite app. Keep the
+claims factual and use synthetic example artwork, never private user images or a fake
+live-training result.
