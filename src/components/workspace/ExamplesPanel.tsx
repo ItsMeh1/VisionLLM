@@ -11,6 +11,125 @@ import { CLASS_COLORS, type ClassDef, type ImageRecord, type Split } from '../..
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
+const MIME_EXTENSION: Record<string, string> = {
+  'image/avif': 'avif',
+  'image/bmp': 'bmp',
+  'image/gif': 'gif',
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/svg+xml': 'svg',
+  'image/tiff': 'tif',
+  'image/webp': 'webp',
+}
+const DROP_IMAGE_EXT = /\.(?:jpe?g|png|webp|gif|bmp|tiff?|avif)(?:$|[?#])/i
+const MAX_DROPPED_URLS = 20
+
+function extensionFor(mime: string): string {
+  return MIME_EXTENSION[mime] ?? 'png'
+}
+
+function droppedImageName(rawUrl: string, mime: string): string {
+  const fallback = `dropped-image.${extensionFor(mime)}`
+  try {
+    const url = new URL(rawUrl)
+    if (url.protocol === 'data:' || url.protocol === 'blob:') return fallback
+    const base = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() ?? '').replace(/[/\\]/g, '-')
+    if (!base) return fallback
+    if (DROP_IMAGE_EXT.test(base)) return base
+    return `${base.replace(/\.[^.]+$/, '') || 'dropped-image'}.${extensionFor(mime)}`
+  } catch {
+    return fallback
+  }
+}
+
+function filesFromTransfer(transfer: DataTransfer): File[] {
+  const files = transfer.files ? Array.from(transfer.files) : []
+  if (files.length) return files
+  for (const item of Array.from(transfer.items ?? [])) {
+    if (item.kind !== 'file') continue
+    const file = item.getAsFile()
+    if (file) files.push(file)
+  }
+  return files
+}
+
+function imageUrlsFromTransfer(transfer: DataTransfer): string[] {
+  const shared: Array<{ value: string; allowRelative: boolean }> = []
+  const htmlImages: Array<{ value: string; allowRelative: boolean }> = []
+  const read = (format: string) => {
+    try {
+      return transfer.getData(format)
+    } catch {
+      return ''
+    }
+  }
+
+  for (const format of ['text/uri-list', 'text/plain', 'text/x-moz-url']) {
+    for (const value of read(format).split(/\r?\n/)) shared.push({ value, allowRelative: false })
+  }
+
+  const html = read('text/html')
+  if (html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, 'text/html')
+      for (const image of Array.from(doc.querySelectorAll('img'))) {
+        const src =
+          image.getAttribute('src') ?? image.getAttribute('srcset')?.split(',')[0]?.trim().split(/\s+/)[0]
+        if (src) htmlImages.push({ value: src, allowRelative: true })
+      }
+    } catch {
+      // Ignore malformed HTML fragments and fall through to the shared URL formats.
+    }
+  }
+
+  // A dragged image wrapped in a link can put the page URL in text/uri-list. The
+  // HTML fragment is more specific, so use its image sources when they exist.
+  const candidates = htmlImages.length ? htmlImages : shared
+  const seen = new Set<string>()
+  const urls: string[] = []
+  for (const { value, allowRelative } of candidates) {
+    if (urls.length >= MAX_DROPPED_URLS) break
+    const raw = value.trim()
+    if (!raw || raw.startsWith('#')) continue
+    if (!allowRelative && !/^(https?:\/\/|data:image\/|blob:)/i.test(raw)) continue
+    let url: URL
+    try {
+      url = new URL(raw, window.location.href)
+    } catch {
+      continue
+    }
+    if (!['http:', 'https:', 'data:', 'blob:'].includes(url.protocol)) continue
+    if (!seen.has(url.href)) {
+      seen.add(url.href)
+      urls.push(url.href)
+    }
+  }
+  return urls
+}
+
+async function downloadDroppedImage(url: string): Promise<File> {
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 20_000)
+  try {
+    const response = await fetch(url, { signal: controller.signal, credentials: 'same-origin' })
+    if (!response.ok) throw new Error(`The image request failed with HTTP ${response.status}.`)
+    const blob = await response.blob()
+    const mime = ((response.headers.get('content-type') ?? blob.type) || '').split(';')[0].trim().toLowerCase()
+    if (!mime.startsWith('image/')) throw new Error('That link did not return an image.')
+    return new File([blob], droppedImageName(response.url || url, mime), { type: mime })
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new Error('The image took too long to load.')
+    }
+    if (error instanceof TypeError) {
+      throw new Error('The other site did not allow this app to read the image. Save it and drop the file instead.')
+    }
+    throw error
+  } finally {
+    window.clearTimeout(timer)
+  }
+}
+
 function ClassNameField({ cls, onRename }: { cls: ClassDef; onRename: (name: string) => void }) {
   const [draft, setDraft] = useState(cls.name)
   useEffect(() => setDraft(cls.name), [cls.name])
@@ -105,8 +224,13 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
 
   const selectedImages = images.filter((image) => selected.has(image.id))
 
-  const importFiles = async (files: File[]) => {
-    if (!files.length) return
+  const importFiles = async (files: File[], errors: string[] = []) => {
+    if (!files.length) {
+      if (errors.length) {
+        notify(errors.length === 1 ? errors[0] : `${errors.length} images could not be added. ${errors[0]}`, 'error')
+      }
+      return
+    }
     setImporting(true)
     try {
       const report = await addFiles(files, 'upload')
@@ -120,8 +244,43 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
       if (report.skipped.length) {
         notify(`${report.skipped.length} file${report.skipped.length === 1 ? ' was' : 's were'} skipped. ${report.skipped[0]}`, 'error')
       }
+      if (errors.length) {
+        notify(errors.length === 1 ? errors[0] : `${errors.length} images could not be added. ${errors[0]}`, 'error')
+      }
     } catch (error) {
       notify(error instanceof Error ? error.message : String(error), 'error')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const importDrop = async (transfer: DataTransfer) => {
+    const files = filesFromTransfer(transfer)
+    if (files.length) {
+      await importFiles(files)
+      return
+    }
+
+    const urls = imageUrlsFromTransfer(transfer)
+    if (!urls.length) {
+      notify('That drag did not include an image. Drag the image itself, or save it and drop the file.', 'error')
+      return
+    }
+
+    setImporting(true)
+    const fetched: File[] = []
+    const failures: string[] = []
+    try {
+      await Promise.all(
+        urls.map(async (url) => {
+          try {
+            fetched.push(await downloadDroppedImage(url))
+          } catch (error) {
+            failures.push(error instanceof Error ? error.message : String(error))
+          }
+        }),
+      )
+      await importFiles(fetched, failures)
     } finally {
       setImporting(false)
     }
@@ -202,7 +361,7 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
       onDrop={(event) => {
         event.preventDefault()
         setDragging(false)
-        void importFiles([...event.dataTransfer.files])
+        void importDrop(event.dataTransfer)
       }}
     >
       <header className="card-head">
@@ -390,7 +549,10 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
             <span className="empty-plus">+</span>
           </div>
           <h3>Add your first examples</h3>
-          <p>Drop a folder of photos here, or choose a few images. JPEG, PNG, WebP and GIF are welcome.</p>
+          <p>
+            Drop a folder of photos here, choose a few images, or drag an image straight from another tab. JPEG, PNG,
+            WebP and GIF are welcome.
+          </p>
           <div className="empty-actions">
             <Button variant="primary" onClick={pickFiles}>Choose images</Button>
             <Button onClick={() => setCamera(true)}>Use camera</Button>
