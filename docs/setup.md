@@ -37,20 +37,21 @@ cd ..
 
 `engine/.venv` is local and ignored by git.
 
-## 3. Run it
+## 3. Run everything
 
-Use two terminals from the repository root:
-
-```bash
-npm run engine   # FastAPI on http://127.0.0.1:8765
-```
+From the repository root:
 
 ```bash
-npm run dev      # Vite on http://127.0.0.1:5173
+npm start
 ```
 
-Open <http://127.0.0.1:5173>. Browsing and annotation work without the engine;
-training and evaluation need it running.
+This starts both the engine and the app, bootstraps missing dependencies, and
+opens <http://127.0.0.1:5173>. Leave the command running while you work. Press
+Ctrl-C to stop the services it started; an engine that was already running is
+left untouched.
+
+Browsing and annotation work without the engine; training and evaluation need it
+running.
 
 ## Checks
 

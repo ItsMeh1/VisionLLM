@@ -5,6 +5,7 @@
   "type": "module",
   "description": "VisionLLM — a local-first computer vision training platform",
   "scripts": {
+    "start": "bash scripts/start-dev.sh",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",

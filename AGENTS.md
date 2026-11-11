@@ -39,12 +39,13 @@ A finished run without an honest evaluation is not finished.
 From the repository root:
 
 ```bash
-npm install
-npm run engine   # terminal 1 — FastAPI on http://127.0.0.1:8765
-npm run dev      # terminal 2 — Vite on http://127.0.0.1:5173
+npm start
 ```
 
-The first run needs the engine environment. Follow [docs/setup.md](docs/setup.md) for the one-time Python setup.
+This starts both the engine and the app, installs missing dependencies if needed,
+and opens <http://127.0.0.1:5173>. It leaves an already-running engine untouched, so
+it is safe during an active training run. Follow [docs/setup.md](docs/setup.md) if the
+requirements are not installed.
 
 Check that the engine is alive and read its capabilities before training:
 

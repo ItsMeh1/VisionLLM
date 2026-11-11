@@ -19,15 +19,16 @@ It supports **object detection**, **image classification** and **image segmentat
 **Requirements:** Node.js 20+ and Python 3.12.
 
 ```bash
-npm install
-npm run engine   # terminal 1
-npm run dev      # terminal 2
+npm start
 ```
 
-Open <http://127.0.0.1:5173>.
+This starts the local engine and browser app, creates missing dependencies if
+needed, and opens <http://127.0.0.1:5173>. Leave it running while you train.
+Existing services are left untouched, so it is safe to run while a training job
+is already in progress. Press Ctrl-C to stop the services this command started.
 
-The first run needs the Python engine environment. The
-[setup guide](docs/setup.md) has the one-time commands.
+Use the app from `main`. The [`website` branch](https://github.com/ItsMeh1/VisionLLM/tree/website)
+is a static deployment branch; it does not contain the app or training environment.
 
 ## What you get
 
@@ -51,6 +52,7 @@ The first run needs the Python engine environment. The
 
 The standalone showcase lives on the
 [`website` branch](https://github.com/ItsMeh1/VisionLLM/tree/website), a static site prepared for GitHub Pages.
+It is deployment-only; app and training work stays on `main`.
 
 ## Licence
 
