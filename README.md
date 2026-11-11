@@ -45,12 +45,12 @@ The first run needs the Python engine environment. The
 ## Documentation
 
 - [Setup](docs/setup.md) — install, run and configure the app and engine.
-- [Agent guide](docs/agents.md) — a short map for coding agents and contributors.
+- [Agent guide](docs/agents.md) — how an AI agent helps you go from images to a trained model.
 - [Architecture](docs/architecture.md) — models, licensing, image guarantees and limits.
-- [AGENTS.md](AGENTS.md) — the binding product and engineering contract.
+- [AGENTS.md](AGENTS.md) — the model-making playbook for agents, including the local engine API.
 
 The standalone showcase lives on the
-[`website` branch](https://github.com/ItsMeh1/VisionLLM/tree/website/website).
+[`website` branch](https://github.com/ItsMeh1/VisionLLM/tree/website), a static site prepared for GitHub Pages.
 
 ## Licence
 
