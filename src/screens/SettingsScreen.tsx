@@ -76,8 +76,9 @@ export function SettingsScreen() {
             <div><dt>Engine</dt><dd className="mono">{health?.storage ?? '~/.visionllm'}</dd></div>
           </dl>
           <p className="field-hint">
-            Trainers receive a copy of the dataset inside the engine folder. Deleting a project in the app removes the
-            browser copy; the engine copy can be removed by deleting that project's folder.
+            Trainers receive a copy of the dataset inside the engine folder. Deleting a project from the home screen
+            removes its browser copy and asks the running engine to delete its training folder. The folder can also be
+            removed by hand.
           </p>
           <Button size="sm" variant="danger" onClick={() => void clearEverything()}>
             Clear all browser data

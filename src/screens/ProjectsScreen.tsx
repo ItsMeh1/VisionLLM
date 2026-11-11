@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
 import { TaskGlyph } from '../components/TaskGlyph'
-import { Button } from '../components/ui'
-import { loadAllProjects } from '../lib/store'
+import { Button, Dialog, Field } from '../components/ui'
+import { deleteProjectData, loadAllProjects } from '../lib/store'
+import { deleteRemoteProject } from '../lib/engine'
+import { useApp } from '../lib/app'
+import { put } from '../lib/db'
 import { navigate } from '../lib/router'
 import { TASK_META, type Project, type Task } from '../lib/types'
 import { formatDate } from '../lib/image'
 
 export function ProjectsScreen() {
+  const { notify } = useApp()
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
+  const [query, setQuery] = useState('')
+  const [renameTarget, setRenameTarget] = useState<Project | null>(null)
+  const [renameValue, setRenameValue] = useState('')
+  const [renaming, setRenaming] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     void loadAllProjects().then((all) => {
@@ -16,6 +26,61 @@ export function ProjectsScreen() {
       setLoading(false)
     })
   }, [])
+
+  const needle = query.trim().toLowerCase()
+  const visibleProjects = needle
+    ? projects.filter((project) =>
+        `${project.name} ${project.classes.map((cls) => cls.name).join(' ')}`.toLowerCase().includes(needle),
+      )
+    : projects
+
+  const openProject = (project: Project) => navigate(`/p/${project.id}/workspace`)
+
+  const startRename = (project: Project) => {
+    setRenameTarget(project)
+    setRenameValue(project.name)
+  }
+
+  const saveRename = async () => {
+    if (!renameTarget) return
+    const name = renameValue.trim()
+    if (!name) return
+    if (name === renameTarget.name) {
+      setRenameTarget(null)
+      return
+    }
+    setRenaming(true)
+    try {
+      const next = { ...renameTarget, name, updatedAt: Date.now() }
+      await put('projects', next)
+      setProjects((items) =>
+        items.map((item) => (item.id === next.id ? next : item)).sort((a, b) => b.updatedAt - a.updatedAt),
+      )
+      setRenameTarget(null)
+      notify('Project renamed.', 'ok')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error), 'error')
+    } finally {
+      setRenaming(false)
+    }
+  }
+
+  const removeProject = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    try {
+      const name = deleteTarget.name
+      await deleteProjectData(deleteTarget.id)
+      setProjects((items) => items.filter((item) => item.id !== deleteTarget.id))
+      setDeleteTarget(null)
+      notify(`“${name}” deleted from this browser.`, 'ok')
+      await deleteRemoteProject(deleteTarget.id)
+    } catch (error) {
+      notify(error instanceof Error ? error.message : String(error), 'error')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   return (
     <main className="home">
@@ -92,13 +157,26 @@ export function ProjectsScreen() {
       <section className="home-projects">
         <header className="section-head">
           <div>
-            <h2>Your projects</h2>
+            <h2>
+              Your projects
+              {projects.length ? <span className="project-count">{projects.length}</span> : null}
+            </h2>
             <p>Pick up where you left off, or start something new.</p>
           </div>
           {projects.length ? (
-            <Button size="sm" onClick={() => navigate('/new')}>
-              New project
-            </Button>
+            <div className="project-tools">
+              <input
+                className="project-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search projects"
+                aria-label="Search projects"
+              />
+              <Button size="sm" onClick={() => navigate('/new')}>
+                New project
+              </Button>
+            </div>
           ) : null}
         </header>
 
@@ -121,10 +199,24 @@ export function ProjectsScreen() {
           </div>
         ) : null}
 
-        {projects.length ? (
+        {projects.length && visibleProjects.length ? (
           <div className="project-cards">
-            {projects.map((project) => (
-              <a key={project.id} className="project-card" href={`#/p/${project.id}/workspace`}>
+            {visibleProjects.map((project) => (
+              <article
+                key={project.id}
+                className="project-card"
+                role="link"
+                tabIndex={0}
+                aria-label={`Open ${project.name}`}
+                onClick={() => openProject(project)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) return
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    openProject(project)
+                  }
+                }}
+              >
                 <div className="project-card-top">
                   <span className="project-card-mark" style={{ background: project.classes[0]?.color ?? '#5B4BE1' }}>
                     <TaskGlyph task={project.task} size={26} />
@@ -146,7 +238,29 @@ export function ProjectsScreen() {
                   <span>Edited {formatDate(project.updatedAt)}</span>
                   <span className="project-open">Open →</span>
                 </div>
-              </a>
+                <div className="project-card-actions">
+                  <button
+                    type="button"
+                    className="text-button"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      startRename(project)
+                    }}
+                  >
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button danger"
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      setDeleteTarget(project)
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </article>
             ))}
             <button type="button" className="project-card new" onClick={() => navigate('/new')}>
               <span className="new-mark">+</span>
@@ -154,6 +268,10 @@ export function ProjectsScreen() {
               <span>Train another model</span>
             </button>
           </div>
+        ) : null}
+
+        {projects.length && !visibleProjects.length ? (
+          <div className="grid-empty">No projects match “{query.trim()}”.</div>
         ) : null}
       </section>
 
@@ -186,6 +304,71 @@ export function ProjectsScreen() {
         <span>Free and local by design</span>
         <span>Models you train are yours · Apache-2.0</span>
       </footer>
+
+      <Dialog
+        open={Boolean(renameTarget)}
+        onClose={() => {
+          if (!renaming) setRenameTarget(null)
+        }}
+        title="Rename project"
+      >
+        {renameTarget ? (
+          <form
+            className="dialog-form"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void saveRename()
+            }}
+          >
+            <Field label="Project name">
+              <input
+                className="text-input"
+                value={renameValue}
+                onChange={(event) => setRenameValue(event.target.value)}
+                maxLength={80}
+                autoFocus
+              />
+            </Field>
+            <div className="button-row">
+              <Button type="submit" variant="primary" busy={renaming} disabled={!renameValue.trim()}>
+                Save name
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setRenameTarget(null)} disabled={renaming}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </Dialog>
+
+      <Dialog
+        open={Boolean(deleteTarget)}
+        onClose={() => {
+          if (!deleting) setDeleteTarget(null)
+        }}
+        title="Delete project"
+      >
+        {deleteTarget ? (
+          <div className="dialog-form">
+            <p>
+              Delete <strong>{deleteTarget.name}</strong>?
+            </p>
+            <p className="field-hint">
+              This removes {deleteTarget.imageCount ?? 0} browser image
+              {(deleteTarget.imageCount ?? 0) === 1 ? '' : 's'}, their annotations and runs, and asks the local engine
+              to delete its training copy. Original files on disk are untouched.
+            </p>
+            <div className="button-row">
+              <Button variant="danger" busy={deleting} onClick={() => void removeProject()}>
+                Delete project
+              </Button>
+              <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </Dialog>
     </main>
   )
 }

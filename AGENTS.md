@@ -22,6 +22,8 @@ points Claude Code here. Read it before changing code.
 - **One shared image library.** Adding images must put them in the library, then let the user open an image, draw
   boxes or labels, and assign classes. Class cards and counts are derived automatically from annotations. Do not add
   per-class import paths that pre-label images.
+- **Deleting app data never deletes originals.** Project deletion clears browser records and asks the engine to
+  remove its training copy; the user's source image files must never be touched.
 
 ## Run it
 

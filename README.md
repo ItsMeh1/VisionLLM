@@ -86,6 +86,9 @@ The app is one workspace with three columns, plus two secondary views.
 5. **Evaluate / Export** — recompute metrics from the saved checkpoint on held-out images; export `model.onnx`,
    labels, `inference.js`, a model card and the dataset zip after ONNX Runtime verification.
 
+Projects can be searched, renamed and deleted from the home screen. Deletion clears the browser records and asks
+the running engine to remove its training copy; original image files on disk are never touched.
+
 ## Working with coding agents
 
 This repository is set up to be driven by external coding agents. [AGENTS.md](AGENTS.md) documents the product

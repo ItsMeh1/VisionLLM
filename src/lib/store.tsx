@@ -13,7 +13,7 @@ import { uploadDataset, type UploadResult } from './engine'
 import { loadImageElement, makeThumbnail } from './image'
 import { stratifiedSplit } from './analysis'
 import type { ToolContext } from './agents/tools'
-import type { ImageRecord, Project, RunRecord } from './types'
+import type { AgentRun, ImageRecord, Project, RunRecord } from './types'
 import { useApp } from './app'
 
 export interface ImportReport {
@@ -338,4 +338,19 @@ export function useProject(): ProjectState {
 export async function loadAllProjects(): Promise<Project[]> {
   const projects = await getAll<Project>('projects')
   return projects.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+/** Remove a project and everything the browser stores for it. Engine cleanup is separate. */
+export async function deleteProjectData(projectId: string): Promise<void> {
+  const [images, runs, agentRuns] = await Promise.all([
+    getAllByProject<ImageRecord>('images', projectId),
+    getAllByProject<RunRecord>('runs', projectId),
+    getAllByProject<AgentRun>('agentRuns', projectId),
+  ])
+  await Promise.all([
+    delMany('images', images.map((image) => image.id)),
+    delMany('runs', runs.map((run) => run.id)),
+    delMany('agentRuns', agentRuns.map((run) => run.id)),
+  ])
+  await del('projects', projectId)
 }
