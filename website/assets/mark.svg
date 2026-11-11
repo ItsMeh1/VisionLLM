@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="visionllm-mark-title">
-  <title id="visionllm-mark-title">VisionLLM mark</title>
-  <rect width="64" height="64" rx="18" fill="#5B4BE1"/>
-  <rect x="17.5" y="17.5" width="22" height="22" rx="4.5" fill="none" stroke="#FFFFFF" stroke-width="3"/>
-  <circle cx="45.5" cy="45.5" r="5.2" fill="#FF8A6A" stroke="#FFFFFF" stroke-width="2.4"/>
-</svg>
