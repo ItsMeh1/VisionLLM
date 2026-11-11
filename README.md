@@ -74,16 +74,16 @@ local Python engine does the training, and the exported artifact runs in the bro
 
 The app is one workspace with three columns, plus two secondary views.
 
-1. **Examples** — drop images, a folder or camera frames into a single library. Import deduplicates by name+size,
-   auto-creates a stratified 80/20 split once there are enough images, and opens the first new image for annotation.
-   Open any tile to review it in detail.
+1. **Examples** — drop images, a folder or camera frames into a single library. Import deduplicates by name+size and
+   opens the first new image for annotation. There are no training or validation sets to manage; a small scoring
+   holdout is chosen automatically when training starts. Open any tile to review it in detail.
 2. **Annotate** — draw boxes on the image, move or resize them, paint polygons for segmentation, or choose a class for
    classification. The active class comes from the class chips; class cards and counts are derived automatically from
    the annotations. There is no per-class import path — imports always land in the shared library first.
 3. **Train** — choose a model and training length; readiness, blockers and warnings come from the real dataset. A live
    engine job reports progress, losses and mAP epoch by epoch.
 4. **Preview** — image, video, camera or the exported ONNX model in the browser (WebGPU with a WASM fallback).
-5. **Evaluate / Export** — recompute metrics from the saved checkpoint on held-out images; export `model.onnx`,
+5. **Evaluate / Export** — recompute metrics from the saved checkpoint on the automatically held-back slice; export `model.onnx`,
    labels, `inference.js`, a model card and the dataset zip after ONNX Runtime verification.
 
 Projects can be searched, renamed and deleted from the home screen. Deletion clears the browser records and asks

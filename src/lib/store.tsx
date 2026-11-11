@@ -11,7 +11,6 @@ import {
 import { del, delMany, getAll, getAllByProject, get, put, putMany } from './db'
 import { uploadDataset, type UploadResult } from './engine'
 import { loadImageElement, makeThumbnail } from './image'
-import { stratifiedSplit } from './analysis'
 import type { ToolContext } from './agents/tools'
 import type { AgentRun, ImageRecord, Project, RunRecord } from './types'
 import { useApp } from './app'
@@ -131,12 +130,7 @@ export function ProjectProvider({ projectId, children }: { projectId: string; ch
     async (records: ImageRecord[]) => {
       if (!records.length) return
       await putMany('images', records)
-      let next = sortImages([...imagesRef.current, ...records])
-      const project = projectRef.current
-      if (project && next.length > 2 && !next.some((image) => image.split === 'val')) {
-        next = sortImages(stratifiedSplit(project, next, 0.2))
-        await putMany('images', next)
-      }
+      const next = sortImages([...imagesRef.current, ...records])
       imagesRef.current = next
       setImages(next)
     },

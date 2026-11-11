@@ -49,10 +49,11 @@ export function ImageGrid({
           >
             <div className="tile-well">
               <img src={image.thumbnail} alt="" loading="lazy" draggable={false} />
-              <div className="tile-flags">
-                <span className={`flag split-${image.split}`}>{image.split === 'val' ? 'Validation' : 'Training'}</span>
-                {missing ? <span className="flag flag-missing">Needs work</span> : null}
-              </div>
+              {missing ? (
+                <div className="tile-flags">
+                  <span className="flag flag-missing">Needs work</span>
+                </div>
+              ) : null}
               {mode === 'select' ? (
                 <span className={active ? 'tile-check on' : 'tile-check'} aria-hidden>
                   {active ? '✓' : ''}

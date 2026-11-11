@@ -5,9 +5,8 @@ import { Button } from '../ui'
 import { IconCamera, IconPlus } from '../Icons'
 import { useProject } from '../../lib/store'
 import { useApp } from '../../lib/app'
-import { stratifiedSplit } from '../../lib/analysis'
 import { datasetDownloadUrl } from '../../lib/engine'
-import { CLASS_COLORS, type ClassDef, type ImageRecord, type Split } from '../../lib/types'
+import { CLASS_COLORS, type ClassDef, type ImageRecord } from '../../lib/types'
 
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`)
 
@@ -163,7 +162,7 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
   const [camera, setCamera] = useState(false)
   const [selecting, setSelecting] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [filter, setFilter] = useState<'all' | 'needs' | 'train' | 'val'>('all')
+  const [filter, setFilter] = useState<'all' | 'needs'>('all')
   const [newClass, setNewClass] = useState('')
   const fileInput = useRef<HTMLInputElement | null>(null)
   const folderInput = useRef<HTMLInputElement | null>(null)
@@ -213,12 +212,7 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
     return map
   }, [images, classes, task])
 
-  const visible = useMemo(() => {
-    if (filter === 'needs') return unlabelled
-    if (filter === 'train') return images.filter((image) => image.split === 'train')
-    if (filter === 'val') return images.filter((image) => image.split === 'val')
-    return images
-  }, [filter, images, unlabelled])
+  const visible = useMemo(() => (filter === 'needs' ? unlabelled : images), [filter, images, unlabelled])
 
   if (!project) return null
 
@@ -299,13 +293,6 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
     })
   }
 
-  const assignSplit = async (split: Split) => {
-    if (!selectedImages.length) return
-    await saveImages(selectedImages.map((image) => ({ ...image, split })))
-    notify(`Moved ${selectedImages.length} image${selectedImages.length === 1 ? '' : 's'} to ${split === 'train' ? 'training' : 'validation'}.`, 'ok')
-    setSelected(new Set())
-  }
-
   const assignLabel = async (classId: string) => {
     if (!selectedImages.length || !classId) return
     await saveImages(selectedImages.map((image) => ({ ...image, label: classId })))
@@ -319,11 +306,6 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
     await removeImages(selectedImages.map((image) => image.id))
     setSelected(new Set())
     notify('Images removed from the project.', 'ok')
-  }
-
-  const rebalance = async () => {
-    await saveImages(stratifiedSplit(project, images, 0.2))
-    notify('Training and validation sets rebalanced.', 'ok')
   }
 
   const addClass = async () => {
@@ -464,8 +446,6 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
             {([
               ['all', 'All', images.length],
               ['needs', 'Needs work', unlabelled.length],
-              ['train', 'Training', images.filter((image) => image.split === 'train').length],
-              ['val', 'Validation', images.filter((image) => image.split === 'val').length],
             ] as const).map(([key, label, count]) => (
               <button
                 key={key}
@@ -496,12 +476,6 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
         <div className="bulk-bar">
           <span>{selectedImages.length} selected</span>
           <div className="bulk-actions">
-            <button type="button" className="text-button" onClick={() => void assignSplit('train')}>
-              Move to training
-            </button>
-            <button type="button" className="text-button" onClick={() => void assignSplit('val')}>
-              Move to validation
-            </button>
             {project.task === 'classify' ? (
               <select
                 className="mini-select"
@@ -562,16 +536,10 @@ export function ExamplesPanel({ onAnnotate }: { onAnnotate: (imageId?: string, c
 
       {images.length ? (
         <div className="examples-foot">
-          <span>
-            {images.filter((image) => image.split === 'train').length} training ·{' '}
-            {images.filter((image) => image.split === 'val').length} validation
-          </span>
+          <span>Your images stay together in one library.</span>
           <details className="dataset-menu">
-            <summary>Dataset settings</summary>
+            <summary>Library tools</summary>
             <div className="dataset-menu-body">
-              <button type="button" className="text-button" onClick={() => void rebalance()}>
-                Rebalance split
-              </button>
               <button type="button" className="text-button" onClick={() => folderInput.current?.click()}>
                 Add a folder
               </button>

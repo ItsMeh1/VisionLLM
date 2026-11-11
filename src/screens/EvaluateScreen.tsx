@@ -167,7 +167,7 @@ export function EvaluateScreen() {
         <PanelHead
           eyebrow="Evaluate"
           title="Does it actually work?"
-          note="Scored on held-out validation images that were excluded from training. Nothing is cached: every number is recomputed from the saved checkpoint."
+          note="Scored on a small slice of images held back automatically from training. Nothing is cached: every number is recomputed from the saved checkpoint."
           actions={
             <div className="button-row">
               <select value={activeRun?.id ?? ''} onChange={(event) => setRunId(event.target.value)} aria-label="Run to evaluate">
@@ -186,7 +186,7 @@ export function EvaluateScreen() {
         {error ? <Callout tone="bad" title="Evaluation failed">{error}</Callout> : null}
 
         <div className="stat-row">
-          <Stat label={headline.primaryLabel} value={busy && !data ? '…' : headline.primary} tone="accent" hint={`${data?.images ?? 0} validation images`} />
+          <Stat label={headline.primaryLabel} value={busy && !data ? '…' : headline.primary} tone="accent" hint={`${data?.images ?? 0} held-back images`} />
           <Stat label={headline.secondaryLabel} value={busy && !data ? '…' : headline.secondary} />
           {project.task === 'detect' ? (
             <>
@@ -231,7 +231,7 @@ export function EvaluateScreen() {
               </p>
             )}
             <p className="field-hint">
-              These are honest numbers on {data?.images ?? 0} held-out images. A tiny validation set makes them noisy.
+              These are honest numbers on {data?.images ?? 0} images held back for scoring.
             </p>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function EvaluateScreen() {
               )
             })}
           </div>
-          {predictions.length > 9 ? <p className="field-hint">Showing 9 of {predictions.length} validation images.</p> : null}
+          {predictions.length > 9 ? <p className="field-hint">Showing 9 of {predictions.length} held-back images.</p> : null}
         </Panel>
       ) : null}
 
@@ -295,7 +295,7 @@ export function EvaluateScreen() {
                 )
               })}
             {!(metrics.images as { truth: number; prediction: number }[]).some((entry) => entry.truth !== entry.prediction) ? (
-              <Badge tone="ok">No validation mistakes. Check that the split is not leaking duplicates.</Badge>
+              <Badge tone="ok">No mistakes on the held-back images.</Badge>
             ) : null}
           </div>
         </Panel>

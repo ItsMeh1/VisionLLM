@@ -41,8 +41,6 @@ export function TrainingPanel({ onPreview }: { onPreview: () => void }) {
     const task = project?.task ?? 'detect'
     const classes = project?.classes ?? []
     if (!images.length) blockers.push('Add a few examples first.')
-    const trainImages = images.filter((image) => image.split === 'train')
-    if (images.length && !trainImages.length) blockers.push('No images are in the training split.')
     if (task === 'classify') {
       const missing = classes.filter((cls) => !images.some((image) => image.label === cls.id))
       if (missing.length) blockers.push(`Add examples for ${missing.map((cls) => cls.name).join(', ')}.`)
@@ -55,12 +53,9 @@ export function TrainingPanel({ onPreview }: { onPreview: () => void }) {
           ),
       )
       if (empty.length) blockers.push(`Add annotations for ${empty.map((cls) => cls.name).join(', ')}.`)
-      const labelledTrain = trainImages.filter((image) => image.boxes.length > 0 || image.shapes.length > 0).length
-      if (images.length && labelledTrain < 4) blockers.push(`Only ${labelledTrain} annotated training images. Four is the minimum.`)
+      const labelled = images.filter((image) => image.boxes.length > 0 || image.shapes.length > 0).length
+      if (images.length && labelled < 4) blockers.push(`Only ${labelled} annotated images. Four is the minimum.`)
     }
-    const val = images.filter((image) => image.split === 'val').length
-    if (!val) warnings.push('No validation images; some will be held out automatically.')
-    else if (val < 3) warnings.push('A small validation set makes scores noisy.')
     if (images.length < 12) warnings.push('More examples usually help more than more epochs.')
     return { blockers, warnings }
   }, [project, images])
@@ -133,8 +128,6 @@ export function TrainingPanel({ onPreview }: { onPreview: () => void }) {
 
   if (!project) return null
 
-  const trainImages = images.filter((image) => image.split === 'train')
-  const valImages = images.filter((image) => image.split === 'val')
   const running = activeRun?.status === 'running' || activeRun?.status === 'queued' || activeRun?.status === 'cancelling'
   const history = activeRun?.history ?? []
   const last = history[history.length - 1]
@@ -175,7 +168,9 @@ export function TrainingPanel({ onPreview }: { onPreview: () => void }) {
     setLog([])
     epochSaves.current = 0
     try {
-      if (!images.some((image) => image.split === 'val') && images.length > 3) {
+      // Keep one image library in the UI. A small holdout is chosen here for an
+      // honest score and never needs to be managed by the user.
+      if (images.length > 1) {
         const { stratifiedSplit } = await import('../../lib/analysis')
         await saveImages(stratifiedSplit(project, images, 0.2))
       }
@@ -286,7 +281,7 @@ export function TrainingPanel({ onPreview }: { onPreview: () => void }) {
         <div>
           <strong>{ready ? 'Ready to train' : 'A few things first'}</strong>
           <span>
-            {images.length} example{images.length === 1 ? '' : 's'} · {trainImages.length} training · {valImages.length} validation
+            {images.length} example{images.length === 1 ? '' : 's'} · one library
           </span>
         </div>
         {health?.device ? <span className="device-tag">{health.device === 'mps' ? 'Apple GPU' : health.device.toUpperCase()}</span> : null}
