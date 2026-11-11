@@ -117,12 +117,14 @@ export function ProjectProvider({ projectId, children }: { projectId: string; ch
 
   const saveImages = useCallback(async (changed: ImageRecord[]) => {
     if (!changed.length) return
-    await putMany('images', changed)
+    // Update the UI before persistence so back-to-back annotation edits see the
+    // latest boxes instead of racing the IndexedDB write.
     const map = new Map(imagesRef.current.map((image) => [image.id, image]))
     for (const image of changed) map.set(image.id, image)
     const next = sortImages([...map.values()])
     imagesRef.current = next
     setImages(next)
+    await putMany('images', changed)
   }, [])
 
   const addRecords = useCallback(

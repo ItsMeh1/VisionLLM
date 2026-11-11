@@ -24,6 +24,7 @@ export function AnnotationCanvas({
   selectedId,
   onSelect,
   onChange,
+  onToolChange,
   proposals = [],
   showProposals = false,
 }: {
@@ -35,6 +36,7 @@ export function AnnotationCanvas({
   selectedId: string | null
   onSelect: (id: string | null) => void
   onChange: (patch: { boxes?: Box[]; shapes?: Shape[] }) => void
+  onToolChange?: (tool: 'select' | 'draw') => void
   proposals?: Box[]
   showProposals?: boolean
 }) {
@@ -46,6 +48,7 @@ export function AnnotationCanvas({
   const [draftPoints, setDraftPoints] = useState<[number, number][]>([])
   const [cursor, setCursor] = useState<[number, number] | null>(null)
   const dragRef = useRef<DragState | null>(null)
+  const implicitDrawRef = useRef(false)
   const boxes = image.boxes
   const shapes = image.shapes
   const selected = boxes.find((box) => box.id === selectedId) ?? null
@@ -238,6 +241,14 @@ export function AnnotationCanvas({
     return null
   }
 
+  const beginDraw = (x: number, y: number, implicit = false) => {
+    const next: Box = { id: 'draft', cls: activeClass, x, y, w: 0, h: 0 }
+    implicitDrawRef.current = implicit
+    dragRef.current = { mode: 'draw', startX: x, startY: y, original: next, handle: null }
+    setDraftBox(next)
+    onSelect(null)
+  }
+
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const { x, y } = pointer(event)
     try {
@@ -272,10 +283,7 @@ export function AnnotationCanvas({
     }
 
     if (tool === 'draw') {
-      const next: Box = { id: 'draft', cls: activeClass, x, y, w: 0, h: 0 }
-      dragRef.current = { mode: 'draw', startX: x, startY: y, original: next, handle: null }
-      setDraftBox(next)
-      onSelect(null)
+      beginDraw(x, y)
       return
     }
 
@@ -292,7 +300,9 @@ export function AnnotationCanvas({
       onSelect(hit.id)
       dragRef.current = { mode: 'move', startX: x, startY: y, original: { ...hit }, handle: null }
     } else {
-      onSelect(null)
+      // Select mode should not dead-end on empty canvas. A drag starts a new box
+      // and switches back to Draw once the box is committed.
+      beginDraw(x, y, true)
     }
   }
 
@@ -346,6 +356,8 @@ export function AnnotationCanvas({
     const drag = dragRef.current
     dragRef.current = null
     if (!drag) return
+    const implicitDraw = implicitDrawRef.current
+    implicitDrawRef.current = false
     if (drag.mode === 'draw') {
       const { x, y } = pointer(event)
       const next = {
@@ -360,6 +372,7 @@ export function AnnotationCanvas({
       if (next.w > 0.006 && next.h > 0.006) {
         onChange({ boxes: [...boxes, next] })
         onSelect(next.id)
+        if (implicitDraw) onToolChange?.('draw')
       }
     }
   }

@@ -230,6 +230,7 @@ export function AnnotateScreen() {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onChange={(patch) => void update(patch)}
+                onToolChange={setTool}
                 proposals={proposals}
                 showProposals={proposals.length > 0}
               />

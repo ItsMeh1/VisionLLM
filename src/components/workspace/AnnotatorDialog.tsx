@@ -164,10 +164,7 @@ export function AnnotatorDialog({
                 type="button"
                 className={cls.id === activeClass ? 'class-chip active' : 'class-chip'}
                 style={cls.id === activeClass ? { borderColor: cls.color, background: `${cls.color}14` } : undefined}
-                onClick={() => {
-                  setActiveClass(cls.id)
-                  if (selectedId) void changeClass(cls.id)
-                }}
+                onClick={() => setActiveClass(cls.id)}
                 title={`${cls.name} · ${classIndex + 1}`}
                 aria-pressed={cls.id === activeClass}
               >
@@ -274,6 +271,7 @@ export function AnnotatorDialog({
                   selectedId={selectedId}
                   onSelect={setSelectedId}
                   onChange={(patch) => void update(patch)}
+                  onToolChange={setTool}
                   proposals={proposals}
                   showProposals={proposals.length > 0}
                 />
@@ -385,7 +383,7 @@ export function AnnotatorDialog({
               <p className="annotator-hintline">
                 {task === 'segment'
                   ? 'Click points around a region, then press Enter or click the first point to close it.'
-                  : 'Tip: draw a little outside the object so the whole thing is inside the box.'}
+                  : 'Tip: draw around every object. In Select, dragging empty space starts another box.'}
               </p>
             </section>
           </aside>
